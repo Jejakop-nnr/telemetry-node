@@ -20,16 +20,24 @@
     <div class="val">Altitude: <span id="altitude">—</span> m</div>
   </div>
 
-  <script src="https://cdn.socket.io/socket.io.min.js"></script>
+  <!-- najpierw ładowanie Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <!-- potem Twój JS, który używa io() -->
   <script>
-    const socket = io();
-    const raw = document.getElementById('raw');
-    socket.on('telemetry', data => {
-      raw.innerText = JSON.stringify(data);
-      if (data.temp !== undefined) document.getElementById('temp').innerText = data.temp;
-      if (data.pressure !== undefined) document.getElementById('pressure').innerText = data.pressure;
-      if (data.altitude !== undefined) document.getElementById('altitude').innerText = data.altitude;
-    });
+    window.onload = function() {
+      const socket = io("https://telemetry-server-rmlj.onrender.com");
+      const raw = document.getElementById('raw');
+
+      socket.on('telemetry', data => {
+        raw.innerText = JSON.stringify(data);
+        if (data.temperature !== undefined) document.getElementById('temp').innerText = data.temperature;
+        if (data.pressure !== undefined) document.getElementById('pressure').innerText = data.pressure;
+        if (data.altitude !== undefined) document.getElementById('altitude').innerText = data.altitude;
+      });
+    };
   </script>
 </body>
+
 </html>
+

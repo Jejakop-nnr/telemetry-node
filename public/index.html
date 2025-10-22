@@ -1,43 +1,76 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Telemetry Live</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    body { font-family: Arial, sans-serif; background:#121212; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
-    .card { background:#1e1e1e; padding:20px; border-radius:10px; width:360px; box-shadow:0 6px 20px rgba(0,0,0,0.6); }
-    .val { font-size:1.2rem; margin:8px 0; }
-    #raw { font-size:0.85rem; color:#bfbfbf; word-break:break-all; }
-  </style>
+<meta charset="UTF-8">
+<title>Telemetry Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { background: #0b0b0b; color: white; font-family: Arial; }
+  h1 { text-align: center; }
+  .chart-container { width: 90%; max-width: 1200px; margin: 20px auto; }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h2>Telemetry (na żywo)</h2>
-    <div id="raw">Brak danych</div>
-    <div class="val">Temp: <span id="temp">—</span> °C</div>
-    <div class="val">Pressure: <span id="pressure">—</span> hPa</div>
-    <div class="val">Altitude: <span id="altitude">—</span> m</div>
-  </div>
+<h1>Rocket Telemetry</h1>
 
-  <!-- najpierw ładowanie Socket.IO -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<div class="chart-container">
+  <canvas id="heightChart"></canvas>
+</div>
+<div class="chart-container">
+  <canvas id="speedChart"></canvas>
+</div>
+<div class="chart-container">
+  <canvas id="tempChart"></canvas>
+</div>
 
-  <!-- potem Twój JS, który używa io() -->
-  <script>
-    window.onload = function() {
-      const socket = io("https://telemetry-server-rmlj.onrender.com");
-      const raw = document.getElementById('raw');
+<script>
+const heightCtx = document.getElementById('heightChart').getContext('2d');
+const speedCtx = document.getElementById('speedChart').getContext('2d');
+const tempCtx = document.getElementById('tempChart').getContext('2d');
 
-      socket.on('telemetry', data => {
-        raw.innerText = JSON.stringify(data);
-        if (data.temperature !== undefined) document.getElementById('temp').innerText = data.temperature;
-        if (data.pressure !== undefined) document.getElementById('pressure').innerText = data.pressure;
-        if (data.altitude !== undefined) document.getElementById('altitude').innerText = data.altitude;
-      });
-    };
-  </script>
+const heightChart = new Chart(heightCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label: 'Height (m)', borderColor: '#00ffea', data: [], tension: 0.4 }]},
+  options: { responsive: true, plugins: { legend: { color: 'white' } }, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
+});
+const speedChart = new Chart(speedCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label: 'Vertical Speed (m/s)', borderColor: '#ff0000', data: [], tension: 0.4 }]},
+  options: { responsive: true, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
+});
+const tempChart = new Chart(tempCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label: 'Temperature (°C)', borderColor: '#ffff00', data: [], tension: 0.4 }]},
+  options: { responsive: true, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
+});
+
+// Symulacja pobierania danych z serwera
+async function fetchData() {
+  try {
+    const res = await fetch('https://telemetry-server-rmlj.onrender.com/telemetry');
+    const data = await res.json();
+
+    // dodaj nowe punkty do wykresów
+    const time = new Date().toLocaleTimeString();
+    heightChart.data.labels.push(time);
+    heightChart.data.datasets[0].data.push(data.height);
+    speedChart.data.labels.push(time);
+    speedChart.data.datasets[0].data.push(data.verticalSpeed);
+    tempChart.data.labels.push(time);
+    tempChart.data.datasets[0].data.push(data.temperature);
+
+    // ogranicz liczbę punktów do 50
+    [heightChart, speedChart, tempChart].forEach(chart => {
+      if(chart.data.labels.length > 50){
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    });
+  } catch(e){ console.error(e); }
+}
+
+setInterval(fetchData, 1000);
+</script>
 </body>
-
 </html>
-

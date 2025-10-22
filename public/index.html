@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Telemetry Live</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background:#121212; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    .card { background:#1e1e1e; padding:20px; border-radius:10px; width:360px; box-shadow:0 6px 20px rgba(0,0,0,0.6); }
+    .val { font-size:1.2rem; margin:8px 0; }
+    #raw { font-size:0.85rem; color:#bfbfbf; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Telemetry (na żywo)</h2>
+    <div id="raw">Brak danych</div>
+    <div class="val">Temp: <span id="temp">—</span> °C</div>
+    <div class="val">Pressure: <span id="pressure">—</span> hPa</div>
+    <div class="val">Altitude: <span id="altitude">—</span> m</div>
+  </div>
+
+  <script src="https://cdn.socket.io/socket.io.min.js"></script>
+  <script>
+    const socket = io();
+    const raw = document.getElementById('raw');
+    socket.on('telemetry', data => {
+      raw.innerText = JSON.stringify(data);
+      if (data.temp !== undefined) document.getElementById('temp').innerText = data.temp;
+      if (data.pressure !== undefined) document.getElementById('pressure').innerText = data.pressure;
+      if (data.altitude !== undefined) document.getElementById('altitude').innerText = data.altitude;
+    });
+  </script>
+</body>
+</html>

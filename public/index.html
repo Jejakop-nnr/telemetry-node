@@ -1,76 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
-<meta charset="UTF-8">
-<title>Telemetry Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  body { background: #0b0b0b; color: white; font-family: Arial; }
-  h1 { text-align: center; }
-  .chart-container { width: 90%; max-width: 1200px; margin: 20px auto; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rocket Telemetry</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: "Orbitron", sans-serif;
+      background-color: #0b0c10;
+      color: #f8f8f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 2.2em;
+      color: #00bfff;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #00bfff;
+    }
+
+    .telemetry {
+      display: grid;
+      grid-template-columns: repeat(2, 200px);
+      gap: 20px;
+    }
+
+    .box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid #00bfff33;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0, 191, 255, 0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(0, 191, 255, 0.4);
+    }
+
+    .label {
+      font-size: 0.9em;
+      color: #aaa;
+    }
+
+    .value {
+      font-size: 1.8em;
+      color: #00bfff;
+      margin-top: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 10px;
+      font-size: 0.8em;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-<h1>Rocket Telemetry</h1>
+  <h1>🚀 Rocket Telemetry</h1>
+  <div class="telemetry">
+    <div class="box"><div class="label">Temperatura</div><div id="temp" class="value">-- °C</div></div>
+    <div class="box"><div class="label">Ciśnienie</div><div id="pres" class="value">-- hPa</div></div>
+    <div class="box"><div class="label">Wysokość</div><div id="alt" class="value">-- m</div></div>
+    <div class="box"><div class="label">Satelity</div><div id="sat" class="value">--</div></div>
+    <div class="box"><div class="label">Accel X</div><div id="ax" class="value">--</div></div>
+    <div class="box"><div class="label">Accel Y</div><div id="ay" class="value">--</div></div>
+    <div class="box"><div class="label">Accel Z</div><div id="az" class="value">--</div></div>
+    <div class="box"><div class="label">Prędkość (gyro Z)</div><div id="gz" class="value">--</div></div>
+  </div>
 
-<div class="chart-container">
-  <canvas id="heightChart"></canvas>
-</div>
-<div class="chart-container">
-  <canvas id="speedChart"></canvas>
-</div>
-<div class="chart-container">
-  <canvas id="tempChart"></canvas>
-</div>
+  <div class="footer">Live Telemetry © RocketLab</div>
 
-<script>
-const heightCtx = document.getElementById('heightChart').getContext('2d');
-const speedCtx = document.getElementById('speedChart').getContext('2d');
-const tempCtx = document.getElementById('tempChart').getContext('2d');
+  <script>
+    const socket = io();
 
-const heightChart = new Chart(heightCtx, {
-  type: 'line',
-  data: { labels: [], datasets: [{ label: 'Height (m)', borderColor: '#00ffea', data: [], tension: 0.4 }]},
-  options: { responsive: true, plugins: { legend: { color: 'white' } }, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
-});
-const speedChart = new Chart(speedCtx, {
-  type: 'line',
-  data: { labels: [], datasets: [{ label: 'Vertical Speed (m/s)', borderColor: '#ff0000', data: [], tension: 0.4 }]},
-  options: { responsive: true, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
-});
-const tempChart = new Chart(tempCtx, {
-  type: 'line',
-  data: { labels: [], datasets: [{ label: 'Temperature (°C)', borderColor: '#ffff00', data: [], tension: 0.4 }]},
-  options: { responsive: true, scales: { x: { ticks: { color: 'white' }}, y: { ticks: { color: 'white' }}} }
-});
-
-// Symulacja pobierania danych z serwera
-async function fetchData() {
-  try {
-    const res = await fetch('https://telemetry-server-rmlj.onrender.com/telemetry');
-    const data = await res.json();
-
-    // dodaj nowe punkty do wykresów
-    const time = new Date().toLocaleTimeString();
-    heightChart.data.labels.push(time);
-    heightChart.data.datasets[0].data.push(data.height);
-    speedChart.data.labels.push(time);
-    speedChart.data.datasets[0].data.push(data.verticalSpeed);
-    tempChart.data.labels.push(time);
-    tempChart.data.datasets[0].data.push(data.temperature);
-
-    // ogranicz liczbę punktów do 50
-    [heightChart, speedChart, tempChart].forEach(chart => {
-      if(chart.data.labels.length > 50){
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-      }
-      chart.update();
+    socket.on("telemetry", data => {
+      document.getElementById("temp").textContent = data.temperature.toFixed(2) + " °C";
+      document.getElementById("pres").textContent = data.pressure.toFixed(2) + " hPa";
+      document.getElementById("alt").textContent = data.altitude.toFixed(2) + " m";
+      document.getElementById("sat").textContent = data.satellites;
+      document.getElementById("ax").textContent = data.accel.x.toFixed(2);
+      document.getElementById("ay").textContent = data.accel.y.toFixed(2);
+      document.getElementById("az").textContent = data.accel.z.toFixed(2);
+      document.getElementById("gz").textContent = data.gyro.z.toFixed(2);
     });
-  } catch(e){ console.error(e); }
-}
-
-setInterval(fetchData, 1000);
-</script>
+  </script>
 </body>
 </html>
